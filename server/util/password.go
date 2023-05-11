@@ -2,7 +2,15 @@ package util
 
 import "golang.org/x/crypto/bcrypt"
 func HashPassword(password string) (string, error) {
-	bcrypt.GenerateFormPassword([]byte(password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFormPassword([]byte(password), bcrypt.DefaultCost)
+	if (err != nil) {
+		return "", fmt.Error("fail to hash password: %w", err)
+	}
+	return string(hashedPassword, nil)
+}
+
+func CheckPassword(password string, hashedPassword string) error{
+	return bcrypt.CompareHashAndPassword([])byte(hashedPassword, []byte(password))
 }
 
 

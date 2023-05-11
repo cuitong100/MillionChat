@@ -16,6 +16,25 @@ func (s *service) CreatedUser(c context.Context, req *CreatedUserReq) (*CreatedU
 	ctx, cancle := context.WithTimeout(c, s.timeout)
 	defer cancle()
 
+	hashedPassword, err := util.HashPassword(req.Password)
+	if err != nil {
+		return nil, err
+	}
+
+	u := &User{
+		Username: req.Username,
+		Email: req.Email,
+		Password: hashedPassword,
+	}
+
+	r.err := s.Repository.CreatedUser(ctx, u)
+
+	if err != nil {
+		return nil, err
+	}
+
+
+
 	u, err != nil {
 		return &LoginUserRes{}, err
 	}
