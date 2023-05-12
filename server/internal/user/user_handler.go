@@ -1,30 +1,57 @@
 package user
-import "github.com/gin-gonic/gin"
+import (
+	"net/http"
+	"github.com/gin-gonic/gin"
+)
 
 type Handler struct {
 	Service
 }
 
 // Constructor of handler
-func NewHandler(s Service) *Handle{
+func NewHandler(s Service) *Handler{
 	return &Handler{
 		Service: s,
 	}
 }
 
-func (h *Handler) CreatedUser(c *gin.Context) {
-	var u CreatedUserReq
+func (h *Handler) CreateUser(c *gin.Context) {
+	var u CreateUserReq
 	if err := c.ShouldBindJSON(&u); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error"; err.Error})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	res, err := h.Service.CreatedUser(c.Request.Context(), &u)
+	res, err := h.Service.CreateUser(c.Request.Context(), &u)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error" : err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	c.JSON(http.StatusOK, res)
+}
 
+func (h *Handler) Login(c *gin.Context) {
+	var user LoginUserReq
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
 
+	u, err := h.Service.Login(c.Request.Context(), &user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.SetCookie("jwt", u.accessToken, 60*60, "/", "localhost", false, true)
+	// res := &LoginUserRes{
+	// 	Username: u.Username,
+	// 	ID:       u.ID,
+	// }
+	c.JSON(http.StatusOK, u)
+}
+
+func (h *Handler) Logout(c *gin.Context) {
+	c.SetCookie("jwt", "", -1, "", "", false, true)
+	c.JSON(http.StatusOK, gin.H{"message": "logout successful"})
 }

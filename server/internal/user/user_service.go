@@ -1,5 +1,17 @@
 package user
 
+import (
+	"time"
+	"context"
+	"server/util"
+	"strconv"
+
+	"github.com/golang-jwt/jwt/v4"
+)
+const (
+	secretKey = "secret"
+)
+
 type service struct {
 	Repository
 	timeout time.Duration
@@ -8,11 +20,11 @@ type service struct {
 func NewService(repository Repository) Service {
 	return &service{
 		repository,
-		timeout.Duration(2) * time.Second,
+		time.Duration(2) * time.Second,
 	}		
 }
 
-func (s *service) CreatedUser(c context.Context, req *CreatedUserReq) (*CreatedUserRes, error) {
+func (s *service) CreateUser(c context.Context, req *CreateUserReq) (*CreateUserRes, error) {
 	ctx, cancle := context.WithTimeout(c, s.timeout)
 	defer cancle()
 
@@ -27,38 +39,56 @@ func (s *service) CreatedUser(c context.Context, req *CreatedUserReq) (*CreatedU
 		Password: hashedPassword,
 	}
 
-	r.err := s.Repository.CreatedUser(ctx, u)
+	r, err := s.Repository.CreateUser(ctx, u)
 
 	if err != nil {
 		return nil, err
 	}
 
-
-
-	u, err != nil {
-		return &LoginUserRes{}, err
+	res := &CreateUserRes{
+		ID:       strconv.Itoa(int(r.ID)),
+		Username: r.Username,
+		Email:    r.Email,
 	}
 
+	return res, nil
+}
+
+type MyJWTClaims struct {
+	ID        string `json: "id"`
+	Username  string `json: "username"`
+	jwt.RegisteredClaims
+}
+
+func (s *service) Login(c context.Context, req *LoginUserReq) (*LoginUserRes, error) {
+	ctx, cancel := context.WithTimeout(c, s.timeout)
+	defer cancel()
+	
+	u, err := s.Repository.GetUserByEmail(ctx, req.Email)
+	if err != nil {
+		return &LoginUserRes{}, err
+	}
+	
 	err = util.CheckPassword(req.Password, u.Password)
 	if err != nil {
 		return &LoginUserRes{}, err
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, MyJWTClaims{
-		ID: strconv.Itoa(int(u.ID)),
-		Username: u.Username,
+		ID :        strconv.Itoa(int(u.ID)),
+		Username:   u.Username,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    strconv.Itoa(int(u.ID)),
+			Issuer: strconv.Itoa(int(u.ID)),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-		},
+		}, 
 	})
-
+	// signed string
 	ss, err := token.SignedString([]byte(secretKey))
-
 	if err != nil {
 		return &LoginUserRes{}, err
 	}
 
 	return &LoginUserRes{accessToken: ss, Username: u.Username, ID: strconv.Itoa(int(u.ID))}, nil
+
 }
 
